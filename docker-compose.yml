@@ -27,7 +27,7 @@ services:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/youtube_data
 
     ports:
-      - "8080:8080"
+      - "8081:8080"
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
@@ -37,7 +37,8 @@ services:
     command: >
       bash -c "airflow db init &&
                airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com &&
-               airflow webserver & airflow scheduler"
+               airflow scheduler & disown &&
+               exec airflow webserver"
 
   spark-master:
     image: bitnami/spark:latest
@@ -47,7 +48,7 @@ services:
       - SPARK_MODE=master
     ports:
       - "7077:7077"
-      - "8081:8081"
+      - "8082:8080"
     volumes:
       - ./spark:/opt/spark-apps
     networks:
@@ -69,24 +70,10 @@ services:
     networks:
       - airflow_spark_network
 
-  spark-worker-2:
-    image: bitnami/spark:latest
-    container_name: spark-worker-2
-    restart: always
-    depends_on:
-      - spark-master
-    environment:
-      - SPARK_MODE=worker
-      - SPARK_WORKER_CORES=2
-      - SPARK_WORKER_MEMORY=2g
-      - SPARK_MASTER_URL=spark://spark-master:7077
-    volumes:
-      - ./spark:/opt/spark-apps
-    networks:
-      - airflow_spark_network
-
 networks:
   airflow_spark_network:
+    driver: bridge
 
 volumes:
   postgres_data:
+    driver: local
